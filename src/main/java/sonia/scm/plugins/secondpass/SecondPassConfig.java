@@ -54,10 +54,6 @@ public class SecondPassConfig
 	
 	public SecondPassConfig()
 	{
-		SecondPassConfigEntry entry = new SecondPassConfigEntry();
-		entry.setUsername("clemens");
-		entry.setSecondPass("doof");
-		users.add( entry );
 	}
 	
 	public List<SecondPassConfigEntry> getUsers()
