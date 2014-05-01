@@ -199,12 +199,17 @@ public class SecondPassAuthenticationHandler implements AuthenticationHandler {
 		}
 
 		if (logger.isDebugEnabled()) {
-			logger.debug("create temporary secondpass entry for user {}",
+			logger.debug("create initial secondpass entry for user {}",
 					currentUser.getName());
 		}
 		SecondPassConfigEntry entry = new SecondPassConfigEntry();
 		entry.setUsername( currentUser.getName() );
-		entry.setSecondPass( SecondPassHelper.generateRandomPassword(30) );
+		entry.setSecondPass( SecondPassHelper.generateRandomPassword(60) );
+		
+		// Save entry in db
+		config.getUsers().add(entry);
+		store.set(config);
+		
 		return entry;
 	}
 
