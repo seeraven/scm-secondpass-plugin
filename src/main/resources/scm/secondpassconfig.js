@@ -27,37 +27,60 @@
  *
  */
 
-package sonia.scm.plugins.secondpass;
+registerGeneralConfigPanel({
+  
+  xtype : 'configForm',
+  title : 'SecondPass Authentication',
+  items : [{
+    xtype : 'checkbox',
+    fieldLabel : 'Enable PAM',
+    name : 'enable-pam',
+    helpText: 'Use PAM to retrieve groups and additional user information.',
+    inputValue: 'true'
+  },{
+    xtype : 'textfield',
+    fieldLabel : 'Service name',
+    name : 'service-name',
+    helpText: 'PAM service name. This corresponds to the service name that \n\
+               shows up in the PAM configuration.',
+    allowBlank : false
+  }],
 
-import java.util.ArrayList;
-import java.util.List;
+  onSubmit: function(values){
+    this.el.mask('Submit ...');
+    Ext.Ajax.request({
+      url: restUrl + 'config/auth/secondpass.json',
+      method: 'POST',
+      jsonData: values,
+      scope: this,
+      disableCaching: true,
+      success: function(response){
+        this.el.unmask();
+      },
+      failure: function(){
+        this.el.unmask();
+      }
+    });
+  },
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
-
-import com.google.inject.Singleton;
-
-
-/**
- * Configuration container of the SecondPass plugin.
- * 
- * @author Clemens Rabe
- *
- */
-@Singleton
-@XmlRootElement(name = "config")
-@XmlAccessorType(XmlAccessType.FIELD)
-public class SecondPassConfig
-{
-	private List<SecondPassConfigEntry> users = new ArrayList<SecondPassConfigEntry>();
-	
-	public SecondPassConfig()
-	{
-	}
-	
-	public List<SecondPassConfigEntry> getUsers()
-	{
-		return users;
-	}	
-}
+  onLoad: function(el){
+    var tid = setTimeout( function(){ el.mask('Loading ...'); }, 100);
+    Ext.Ajax.request({
+      url: restUrl + 'config/auth/secondpass.json',
+      method: 'GET',
+      scope: this,
+      disableCaching: true,
+      success: function(response){
+        var obj = Ext.decode(response.responseText);
+        this.load(obj);
+        clearTimeout(tid);
+        el.unmask();
+      },
+      failure: function(){
+        el.unmask();
+        clearTimeout(tid);
+        alert('failure');
+      }
+    });
+  }
+});

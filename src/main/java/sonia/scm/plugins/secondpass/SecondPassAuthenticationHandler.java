@@ -30,6 +30,7 @@
 package sonia.scm.plugins.secondpass;
 
 import java.io.IOException;
+import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -38,6 +39,9 @@ import org.apache.shiro.SecurityUtils;
 import org.apache.shiro.subject.Subject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 
 import sonia.scm.SCMContextProvider;
 import sonia.scm.plugin.ext.Extension;
@@ -48,8 +52,9 @@ import sonia.scm.user.UserManager;
 import sonia.scm.web.security.AuthenticationHandler;
 import sonia.scm.web.security.AuthenticationResult;
 
-import com.google.inject.Inject;
-import com.google.inject.Singleton;
+import org.jvnet.libpam.PAM;
+import org.jvnet.libpam.PAMException;
+
 
 /**
  * The authentication handler to support the secondary password.
@@ -63,16 +68,25 @@ public class SecondPassAuthenticationHandler implements AuthenticationHandler {
 	/** The authentication type. */
 	public static final String TYPE = "secondPass";
 
-	/** The type used for the store. */
+	/** The type used for the user settings store. */
 	public static final String STORETYPE = "secondPass";
+
+	/** The type used for the plugin config store. */
+	public static final String PLUGINSTORETYPE = "secondPassConfig";
 
 	/** the logger for AutoLoginAuthenticationHandler */
 	private static final Logger logger = LoggerFactory
 			.getLogger(SecondPassAuthenticationHandler.class);
 
 	/** The configuration of the plugin. */
+	private SecondPassPluginConfig pluginConfig;
+	
+	/** The user settings. */
 	private SecondPassConfig config;
 
+	/** The store of the plugin configuration. */
+	private Store<SecondPassPluginConfig> pluginStore;
+	
 	/** The store of the configuration. */
 	private Store<SecondPassConfig> store;
 
@@ -92,6 +106,7 @@ public class SecondPassAuthenticationHandler implements AuthenticationHandler {
 			StoreFactory storeFactory) {
 		this.userManager = userManager;
 		store = storeFactory.getStore(SecondPassConfig.class, STORETYPE);
+		pluginStore = storeFactory.getStore(SecondPassPluginConfig.class, PLUGINSTORETYPE);
 	}
 
 	/**
@@ -104,6 +119,13 @@ public class SecondPassAuthenticationHandler implements AuthenticationHandler {
 		if (config == null) {
 			config = new SecondPassConfig();
 			store.set(config);
+		}
+		
+		pluginConfig = pluginStore.get();
+		
+		if (pluginConfig == null) {
+			pluginConfig = new SecondPassPluginConfig();
+			pluginStore.set(pluginConfig);
 		}
 	}
 
@@ -122,11 +144,41 @@ public class SecondPassAuthenticationHandler implements AuthenticationHandler {
 		return TYPE;
 	}
 
+	@SuppressWarnings("deprecation")
+	public AuthenticationResult getFilledResult(User user, String username) {
+		PAM                  pam    = null;
+		
+		if ( pluginConfig.usePAM()) {
+			// Initialize connection to PAM
+			try {
+				pam = new PAM(pluginConfig.getServiceName());
+			}
+			catch (PAMException ex)
+			{
+				logger.warn("could not load pam module", ex);
+			}
+			
+			
+			// Retrieve groups
+			try {
+				Set<String> groups = pam.getGroupsOfUser(username);
+				return new AuthenticationResult(user, groups);
+			}
+			catch (PAMException ex)
+			{
+				logger.warn("Can't get groups of user '" + username + "' using PAM!", ex);
+			}
+		}
+		
+		return new AuthenticationResult(user);
+	}
+	
 	@Override
 	public AuthenticationResult authenticate(HttpServletRequest request,
 			HttpServletResponse response, String username, String password) {
 		AuthenticationResult result = AuthenticationResult.NOT_FOUND;
-
+		
+		
 		// Search for the user in the user manager
 		User user = userManager.get(username);
 
@@ -148,7 +200,7 @@ public class SecondPassAuthenticationHandler implements AuthenticationHandler {
 					}
 
 					if (entry.getSecondPass().equals(password)) {
-						result = new AuthenticationResult(user);
+						result = getFilledResult(user, username);
 					}
 
 					if (logger.isDebugEnabled()) {
@@ -181,6 +233,15 @@ public class SecondPassAuthenticationHandler implements AuthenticationHandler {
 		}
 
 		return result;
+	}
+	
+	public SecondPassPluginConfig getPluginConfig() {
+		return pluginConfig;
+	}
+	
+	public void setPluginConfig(SecondPassPluginConfig config) {
+		pluginConfig = config;
+		pluginStore.set(pluginConfig);
 	}
 
 	public SecondPassConfigEntry getCurrentUserEntry() {

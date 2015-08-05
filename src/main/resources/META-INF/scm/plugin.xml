@@ -22,6 +22,7 @@
 
   <resources>
     <script>/scm/secondpass.js</script>
+    <script>/scm/secondpassconfig.js</script>
   </resources>
 
 </plugin>
