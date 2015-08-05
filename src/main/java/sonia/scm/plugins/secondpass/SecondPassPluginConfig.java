@@ -26,14 +26,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *
  */
-
 package sonia.scm.plugins.secondpass;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
+import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import com.google.inject.Singleton;
@@ -48,16 +45,38 @@ import com.google.inject.Singleton;
 @Singleton
 @XmlRootElement(name = "config")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class SecondPassConfig
-{
-	private List<SecondPassConfigEntry> users = new ArrayList<SecondPassConfigEntry>();
+public class SecondPassPluginConfig {
 	
-	public SecondPassConfig()
+	public SecondPassPluginConfig()
 	{
+		
 	}
 	
-	public List<SecondPassConfigEntry> getUsers()
+	public Boolean usePAM()
 	{
-		return users;
-	}	
+		return enablePAM_b;
+	}
+
+	public String getServiceName()
+	{
+		return serviceName;
+	}
+
+	public void setUsePAM(Boolean usePam)
+	{
+		enablePAM_b = usePam;
+	}
+	
+	public void setServiceName(String serviceName)
+	{
+		this.serviceName = serviceName;
+	}
+
+	//~--- fields ---------------------------------------------------------------
+
+	@XmlElement(name = "enable-pam")
+	private Boolean enablePAM_b = true;
+	
+	@XmlElement(name = "service-name")
+	private String serviceName = "sshd";
 }

@@ -29,35 +29,63 @@
 
 package sonia.scm.plugins.secondpass;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.io.IOException;
 
-import javax.xml.bind.annotation.XmlAccessType;
-import javax.xml.bind.annotation.XmlAccessorType;
-import javax.xml.bind.annotation.XmlRootElement;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.UriInfo;
 
+import com.google.inject.Inject;
 import com.google.inject.Singleton;
 
-
 /**
- * Configuration container of the SecondPass plugin.
+ * Ressource for the plugin configuration.
  * 
  * @author Clemens Rabe
- *
  */
 @Singleton
-@XmlRootElement(name = "config")
-@XmlAccessorType(XmlAccessType.FIELD)
-public class SecondPassConfig
-{
-	private List<SecondPassConfigEntry> users = new ArrayList<SecondPassConfigEntry>();
-	
-	public SecondPassConfig()
-	{
+@Path("config/auth/secondpass")
+public class SecondPassPluginConfigRessource {
+	private SecondPassAuthenticationHandler authenticationHandler;
+
+	/**
+	 * Constructor.
+	 * 
+	 * @param authenticationHandler
+	 *            - The AutoLoginAuthenticationHandler.
+	 */
+	@Inject
+	public SecondPassPluginConfigRessource(
+			SecondPassAuthenticationHandler authenticationHandler) {
+		this.authenticationHandler = authenticationHandler;
 	}
-	
-	public List<SecondPassConfigEntry> getUsers()
-	{
-		return users;
-	}	
+
+	/**
+	 * Get the configuration.
+	 * 
+	 * @return The configuration.
+	 */
+	@GET
+	@Produces({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
+	public SecondPassPluginConfig getConfig() {
+		return authenticationHandler.getPluginConfig();
+	}
+
+	/**
+	 * Set the configuration.
+	 */
+	@POST
+	@Consumes({ MediaType.APPLICATION_XML, MediaType.APPLICATION_JSON })
+	public Response setConfig(@Context UriInfo uriInfo,
+			SecondPassPluginConfig config) throws IOException {
+		authenticationHandler.setPluginConfig(config);
+		return Response.created(uriInfo.getRequestUri()).build();
+	}
+
 }
